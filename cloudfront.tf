@@ -39,6 +39,11 @@ resource "aws_cloudfront_distribution" "this" {
     min_ttl                = 0
     default_ttl            = 0
     max_ttl                = 0
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.add_index_html.arn
+    }
   }
 
   restrictions {
@@ -72,4 +77,25 @@ resource "aws_cloudfront_distribution" "this" {
 
   price_class = "PriceClass_100"
 
+}
+
+resource "aws_cloudfront_function" "add_index_html" {
+  name    = "add-index-html-${var.bucket_name}"
+  runtime = "cloudfront-js-1.0"
+  comment = "Appends index.html to directory requests"
+
+  code = <<EOF
+function handler(event) {
+    var request = event.request;
+    var uri = request.uri;
+
+    if (uri.endsWith('/')) {
+        request.uri += 'index.html';
+    } else if (!uri.includes('.') && !uri.endsWith('/')) {
+        request.uri += '/index.html';
+    }
+
+    return request;
+}
+EOF
 }
